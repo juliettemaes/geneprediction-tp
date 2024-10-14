@@ -61,7 +61,13 @@ def read_fasta(fasta_file: Path) -> str:
     :param fasta_file: (Path) Path to the fasta file.
     :return: (str) Sequence from the genome. 
     """
-    pass
+    sequence = ""
+    with open(fasta_file, "r") as f:
+        for line in f:
+            if not line.startswith(">"):
+                sequence += line.strip().upper()
+
+    return sequence
 
 
 def find_start(start_regex: Pattern, sequence: str, start: int, stop: int) -> Union[int, None]:
@@ -73,7 +79,11 @@ def find_start(start_regex: Pattern, sequence: str, start: int, stop: int) -> Un
     :param stop: (int) Stop position of the research
     :return: (int) If exist, position of the start codon. Otherwise None. 
     """
-    pass
+    starts = start_regex.search(sequence, start, stop)
+    if not(starts):
+        return None
+    else:
+        return starts.start(0)
 
 
 def find_stop(stop_regex: Pattern, sequence: str, start: int) -> Union[int, None]:
@@ -84,8 +94,19 @@ def find_stop(stop_regex: Pattern, sequence: str, start: int) -> Union[int, None
     :param start: (int) Start position of the research
     :return: (int) If exist, position of the stop codon. Otherwise None. 
     """
-    pass
+    stops = stop_regex.finditer(sequence, start, len(sequence))
 
+    # If iterator is empty
+    if stops is None:
+        return None
+    # Check if the stop codon is in frame with the start codon
+    is_in_frame = False
+    for stop in stops:
+        if (stop.start(0)-start) % 3 == 0:
+            is_in_frame = True
+            return stop.start(0)
+    if not is_in_frame:
+        return None
 
 def has_shine_dalgarno(shine_regex: Pattern, sequence: str, start: int, max_shine_dalgarno_distance: int) -> bool:
     """Find a shine dalgarno motif before the start codon
@@ -194,6 +215,7 @@ def main() -> None: # pragma: no cover
     #write_genes(args.fasta_file, sequence, probable_genes, sequence_rc, probable_genes_comp)
 
 
-
 if __name__ == '__main__':
     main()
+    file = read_fasta("/home/jmaes/Documents/M2_BI/omics/TP_metagenomique_2/geneprediction-tp/data/test.fna")
+    print(file)
