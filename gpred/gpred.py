@@ -210,7 +210,7 @@ def write_genes(
     :param sequence: (str) Sequence of genome file in 5'->3'.
     :param probable_genes: (list) List of [start, stop] position of each predicted genes in 5'->3'.
     :param sequence_rc: (str) Sequence of genome file in 3' -> 5'.
-    :param probable_genes_comp: (list)List of [start, stop] position of each predicted genes in 3' -> 5'.
+    :param probable_genes_comp: List of [start, stop] position of each predicted genes in 3' -> 5'.
     """
     try:
         with open(fasta_file, "wt") as fasta:
@@ -274,7 +274,7 @@ def main() -> None: # pragma: no cover
     start_regex = re.compile('AT[TG]|[ATCG]TG')
     stop_regex = re.compile('TA[GA]|TGA')
     # Shine AGGAGGUAA
-    #AGGA ou GGAGG 
+    #AGGA ou GGAGG
     shine_regex = re.compile('A?G?GAGG|GGAG|GG.{1}GG')
 
     # Get the arguments
