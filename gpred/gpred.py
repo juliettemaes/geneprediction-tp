@@ -3,7 +3,6 @@ import sys
 import os
 import csv
 import re
-import numpy as np
 from textwrap import fill
 from re import Pattern
 from pathlib import Path
@@ -38,16 +37,16 @@ def get_arguments(): # pragma: no cover
     parser = argparse.ArgumentParser(description=__doc__, usage=
                                      "{0} -h"
                                      .format(sys.argv[0]))
-    parser.add_argument('-i', dest='genome_file', type=isfile, required=True, 
+    parser.add_argument('-i', dest='genome_file', type=isfile, required=True,
                         help="Complete genome file in fasta format")
-    parser.add_argument('-g', dest='min_gene_len', type=int, 
+    parser.add_argument('-g', dest='min_gene_len', type=int,
                         default=50, help="Minimum gene length to consider (default 50).")
-    parser.add_argument('-s', dest='max_shine_dalgarno_distance', type=int, 
+    parser.add_argument('-s', dest='max_shine_dalgarno_distance', type=int,
                         default=16, help="Maximum distance from start codon "
                         "where to look for a Shine-Dalgarno motif (default 16).")
     parser.add_argument('-d', dest='min_gap', type=int, default=40,
                         help="Minimum gap between two genes - shine box not included (default 40).")
-    parser.add_argument('-p', dest='predicted_genes_file', type=Path, 
+    parser.add_argument('-p', dest='predicted_genes_file', type=Path,
                         default=Path("predict_genes.csv"),
                         help="Tabular file giving position of predicted genes")
     parser.add_argument('-o', dest='fasta_file', type=Path,
@@ -81,7 +80,7 @@ def find_start(start_regex: Pattern, sequence: str, start: int, stop: int) -> Un
     :return: (int) If exist, position of the start codon. Otherwise None. 
     """
     starts = start_regex.search(sequence, start, stop)
-    if not(starts):
+    if not starts:
         return None
     else:
         return starts.start(0)
@@ -110,13 +109,16 @@ def find_stop(stop_regex: Pattern, sequence: str, start: int) -> Union[int, None
         return None
 
 
-def has_shine_dalgarno(shine_regex: Pattern, sequence: str, start: int, max_shine_dalgarno_distance: int) -> bool:
+def has_shine_dalgarno(
+    shine_regex: Pattern,
+    sequence: str, start: int,
+    max_shine_dalgarno_distance: int) -> bool:
     """Find a shine dalgarno motif before the start codon
 
     :param shine_regexp: A regex object that identifies a shine-dalgarno motif.
     :param sequence: (str) Sequence from the genome
     :param start: (int) Position of the start in the genome
-    :param max_shine_dalgarno_distance: (int) Maximum distance of the shine dalgarno to the start position
+    :param max_shine_dalgarno_distance: (int) Max dist of the shine dalgarno to the start position
     :return: (boolean) true -> has a shine dalgarno upstream to the gene, false -> no
     """
     search_start = start - max_shine_dalgarno_distance
@@ -132,12 +134,12 @@ def has_shine_dalgarno(shine_regex: Pattern, sequence: str, start: int, max_shin
 
 
 def predict_genes(
-    sequence: str, 
-    start_regex: Pattern, 
-    stop_regex: Pattern, 
-    shine_regex: Pattern, 
-    min_gene_len: int, 
-    max_shine_dalgarno_distance: int, 
+    sequence: str,
+    start_regex: Pattern,
+    stop_regex: Pattern,
+    shine_regex: Pattern,
+    min_gene_len: int,
+    max_shine_dalgarno_distance: int,
     min_gap: int) -> List:
     """Predict most probable genes
 
@@ -146,7 +148,7 @@ def predict_genes(
     :param stop_regexp: A regex object that identifies a stop codon.
     :param shine_regexp: A regex object that identifies a shine-dalgarno motif.
     :param min_gene_len: (int) Minimum gene length.
-    :param max_shine_dalgarno_distance: (int) Maximum distance of the shine dalgarno to the start position.
+    :param max_shine_dalgarno_distance: (int) Max dist of the shine dalgarno to the start position.
     :param min_gap: (int) Minimum distance between two genes.
     :return: (list) List of [start, stop] position of each predicted genes.
     """
@@ -166,8 +168,8 @@ def predict_genes(
                 gene_len = stop - current_pos + 1
                 if gene_len >= min_gene_len:
                     if has_shine_dalgarno(shine_regex,
-                                          sequence, 
-                                          current_pos, 
+                                          sequence,
+                                          current_pos,
                                           max_shine_dalgarno_distance):
                         # Probable gene identified, save it:
                         gene_list.append([current_pos+1, stop+3])
@@ -196,8 +198,12 @@ def write_genes_pos(predicted_genes_file: Path, probable_genes: List[List[int]])
         sys.exit("Error cannot open {}".format(predicted_genes_file))
 
 
-def write_genes(fasta_file: Path, sequence: str, probable_genes: List[List[int]], sequence_rc: str, 
-                probable_genes_comp: List[List[int]]):
+def write_genes(
+    fasta_file: Path,
+    sequence: str,
+    probable_genes: List[List[int]],
+    sequence_rc: str,
+    probable_genes_comp: List[List[int]]):
     """Write gene sequence in fasta format
 
     :param fasta_file: (Path) Output fasta file.
@@ -210,7 +216,7 @@ def write_genes(fasta_file: Path, sequence: str, probable_genes: List[List[int]]
         with open(fasta_file, "wt") as fasta:
             for i,gene_pos in enumerate(probable_genes):
                 fasta.write(">gene_{0}{1}{2}{1}".format(
-                    i+1, os.linesep, 
+                    i+1, os.linesep,
                     fill(sequence[gene_pos[0]-1:gene_pos[1]])))
             i = i+1
             for j,gene_pos in enumerate(probable_genes_comp):
@@ -232,6 +238,12 @@ def reverse_complement(sequence: str) -> str:
 
 
 def reorder_gene_list(gene_list : list, sequence) -> list:
+    """Reorder the gene list from a 3' -> 5' to 5' -> 3'
+
+    :param gene_list: (list)List of [start, stop] position of each predicted genes in 3' -> 5'.
+    :param sequence: (str) Sequence from the genome.
+    :return: (list) List of [start, stop] position of each predicted genes in the 5' -> 3'.
+    """
     new_gene_list = []
     for gene in gene_list:
         start = len(sequence) - gene[1] + 1
