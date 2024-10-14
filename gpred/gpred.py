@@ -108,6 +108,7 @@ def find_stop(stop_regex: Pattern, sequence: str, start: int) -> Union[int, None
     if not is_in_frame:
         return None
 
+
 def has_shine_dalgarno(shine_regex: Pattern, sequence: str, start: int, max_shine_dalgarno_distance: int) -> bool:
     """Find a shine dalgarno motif before the start codon
 
@@ -117,11 +118,26 @@ def has_shine_dalgarno(shine_regex: Pattern, sequence: str, start: int, max_shin
     :param max_shine_dalgarno_distance: (int) Maximum distance of the shine dalgarno to the start position
     :return: (boolean) true -> has a shine dalgarno upstream to the gene, false -> no
     """
-    pass
+    search_start = start - max_shine_dalgarno_distance
+
+    if search_start < 0:
+        return False
+
+    shine_dalgarno = shine_regex.search(sequence, search_start, start - 6)
+    if shine_dalgarno is not None:
+        return True
+    else:
+        return False
 
 
-def predict_genes(sequence: str, start_regex: Pattern, stop_regex: Pattern, shine_regex: Pattern, 
-                  min_gene_len: int, max_shine_dalgarno_distance: int, min_gap: int) -> List:
+def predict_genes(
+    sequence: str, 
+    start_regex: Pattern, 
+    stop_regex: Pattern, 
+    shine_regex: Pattern, 
+    min_gene_len: int, 
+    max_shine_dalgarno_distance: int, 
+    min_gap: int) -> List:
     """Predict most probable genes
 
     :param sequence: (str) Sequence from the genome.
@@ -133,7 +149,43 @@ def predict_genes(sequence: str, start_regex: Pattern, stop_regex: Pattern, shin
     :param min_gap: (int) Minimum distance between two genes.
     :return: (list) List of [start, stop] position of each predicted genes.
     """
-    pass
+    current_pos = 0
+    gene_list = []
+
+    print(sequence)
+    print("sequence length")
+    print(len(sequence))
+
+    print("(len(sequence) - current_pos) : ", (len(sequence) - current_pos))
+
+    while (len(sequence) - current_pos) >= min_gap:
+        current_pos = find_start(start_regex,
+                                 sequence,
+                                 current_pos,
+                                 len(sequence))
+        print("loop, current pos is", current_pos)
+        if current_pos is not None:
+            stop = find_stop(stop_regex,
+                             sequence,
+                             current_pos)
+            if stop is not None:
+                gene_len = stop - current_pos + 1
+                if gene_len >= min_gene_len:
+                    if has_shine_dalgarno(shine_regex,
+                                          sequence, 
+                                          current_pos, 
+                                          max_shine_dalgarno_distance):
+                        # Probable gene identified, save it:
+                        gene_list.append([current_pos+1, stop+3])
+                        print([current_pos+1, stop+3], "is potential gene")
+                        current_pos = stop + 3 + min_gap
+                    else:
+                        current_pos = current_pos + 1
+                else:
+                    current_pos = current_pos + 1
+            else:
+                current_pos = current_pos + 1
+    return gene_list
 
 
 def write_genes_pos(predicted_genes_file: Path, probable_genes: List[List[int]]) -> None:
