@@ -3,7 +3,8 @@ import sys
 import os
 import csv
 import re
-import textwrap
+import numpy as np
+from textwrap import fill
 from re import Pattern
 from pathlib import Path
 from typing import List, Union, Optional
@@ -152,18 +153,11 @@ def predict_genes(
     current_pos = 0
     gene_list = []
 
-    print(sequence)
-    print("sequence length")
-    print(len(sequence))
-
-    print("(len(sequence) - current_pos) : ", (len(sequence) - current_pos))
-
     while (len(sequence) - current_pos) >= min_gap:
         current_pos = find_start(start_regex,
                                  sequence,
                                  current_pos,
                                  len(sequence))
-        print("loop, current pos is", current_pos)
         if current_pos is not None:
             stop = find_stop(stop_regex,
                              sequence,
@@ -177,7 +171,6 @@ def predict_genes(
                                           max_shine_dalgarno_distance):
                         # Probable gene identified, save it:
                         gene_list.append([current_pos+1, stop+3])
-                        print([current_pos+1, stop+3], "is potential gene")
                         current_pos = stop + 3 + min_gap
                     else:
                         current_pos = current_pos + 1
@@ -238,6 +231,23 @@ def reverse_complement(sequence: str) -> str:
     return ''.join([complement[base] for base in sequence[::-1]])
 
 
+def reorder_gene_list(gene_list : list, sequence) -> list:
+    new_gene_list = []
+    for gene in gene_list:
+        start = len(sequence) - gene[1] + 1
+        stop = len(sequence) - gene[0] + 1
+        new_gene_list.append([start,stop])
+
+    return new_gene_list
+    # # switch back to a list and sort it
+    # genes = genes.tolist()
+    # genes.sort()
+
+    # # return the sorted list
+    # return genes
+
+
+
 #==============================================================
 # Main program
 #==============================================================
@@ -254,20 +264,39 @@ def main() -> None: # pragma: no cover
     # Shine AGGAGGUAA
     #AGGA ou GGAGG 
     shine_regex = re.compile('A?G?GAGG|GGAG|GG.{1}GG')
-    # Arguments
+
+    # Get the arguments
     args = get_arguments()
-    # Let us do magic in 5' to 3'
-    
-    # Don't forget to uncomment !!!
-    # Call these function in the order that you want
-    # We reverse and complement
-    #sequence_rc = reverse_complement(sequence)
-    # Call to output functions
-    #write_genes_pos(args.predicted_genes_file, probable_genes)
-    #write_genes(args.fasta_file, sequence, probable_genes, sequence_rc, probable_genes_comp)
+
+    # Read fasta file
+    sequence = read_fasta(args.genome_file)
+
+    # Forward gene search
+    search_5_3 = predict_genes(sequence,
+                              start_regex,
+                              stop_regex,
+                              shine_regex,
+                              args.min_gene_len,
+                              args.max_shine_dalgarno_distance,
+                              args.min_gap)
+    # Reverse gene search
+    rv_sequence = reverse_complement(sequence)
+    search_3_5 = predict_genes(rv_sequence,
+                              start_regex,
+                              stop_regex,
+                              shine_regex,
+                              args.min_gene_len,
+                              args.max_shine_dalgarno_distance,
+                              args.min_gap)
+
+    search_3_5_rv = reorder_gene_list(search_3_5, sequence)
+
+    probable_genes = search_5_3 + search_3_5_rv
+    probable_genes.sort()
+
+    write_genes_pos(args.predicted_genes_file, probable_genes)
+    write_genes(args.fasta_file, sequence, search_5_3, rv_sequence, search_3_5)
 
 
 if __name__ == '__main__':
     main()
-    file = read_fasta("/home/jmaes/Documents/M2_BI/omics/TP_metagenomique_2/geneprediction-tp/data/test.fna")
-    print(file)
